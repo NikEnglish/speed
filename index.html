@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест на скорость печати</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f4f4f9;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        h1 {
+            color: #333;
+        }
+        .text-options {
+            margin: 20px 0;
+        }
+        select, input[type="number"] {
+            font-size: 16px;
+            padding: 8px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        .testText {
+            border: 1px solid #ccc;
+            width: 70%;
+            padding: 20px;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: block;
+            text-align: left;
+            margin-left: auto;
+            margin-right: auto;
+            min-height: 100px;
+        }
+        .inputField {
+            font-size: 20px;
+            padding: 10px;
+            width: 70%;
+            text-align: center;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        .results {
+            display: none;
+            margin-top: 30px;
+            font-size: 18px;
+        }
+        .correct {
+            color: green;
+        }
+        .incorrect {
+            color: red;
+        }
+        .wpm, .accuracy {
+            margin-top: 10px;
+        }
+        .letter {
+            display: inline;
+        }
+        .letter-correct {
+            color: green;
+        }
+        .letter-incorrect {
+            color: red;
+        }
+        .achievements {
+            margin-top: 20px;
+        }
+        .achievements span {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Проверь свою скорость печати</h1>
+    <div class="container">
+        <div class="text-options">
+            <label for="textSelect">Выбери длину текста: </label>
+            <select id="textSelect" onchange="changeTextLength()">
+                <option value="short">Короткий (±100 символов)</option>
+                <option value="medium">Средний (±200 символов)</option>
+                <option value="long">Длинный (±350 символов)</option>
+            </select>
+        </div>
+
+        <div>
+            <p>Прочитай текст ниже и начни печатать в поле. Помни про знаки препинания! <br><br>
+            ВНИМАНИЕ ЕСЛИ ПРИНУДИТЕЛЬНО НУЖНО ЗАКОНЧИТЬ ТО НАЖМИ ЦИФРУ ОТ 0-9</p>
+            <div id="testText" class="testText"></div>
+            <form id="typingForm" onsubmit="finishTest(event)">
+                <input type="text" id="inputText" class="inputField" placeholder="Начни печатать здесь..." oninput="startTypingTest()">
+                <button type="submit" style="display:none;"></button>
+            </form>
+        </div>
+
+        <div class="results" id="resultBox">
+            <h3>Результаты теста:</h3>
+            <p id="wpm" class="wpm"></p>
+            <p id="accuracy" class="accuracy"></p>
+        </div>
+
+        <div class="achievements" id="achievementsBox">
+            <h3>Достижения</h3>
+            <span id="speedAchievement"></span>
+            <span id="accuracyAchievement"></span>
+        </div>
+    </div>
+
+    <!-- Вставка JSON данных ниже HTML кода -->
+    <pre id="jsonData" style="display:none;">
+    {
+        "short": [
+            "Пример текста для теста на скорость.",
+            "Быстрая корова пробежала поле.",
+            "Зимой всегда приятно пить горячий чай.",
+            "Летним утром пробежался пес по зеленому полю.",
+            "Человек должен быть гибким, чтобы эффективно адаптироваться к новым вызовам."
+        ],
+        "medium": [
+            "Технологии и программирование всё чаще влияют на нашу повседневную жизнь, помогая автоматизировать разные процессы.",
+            "Автомобиль — это средство передвижения, которое используется людьми для достижения дальних точек.",
+            "Тренировки и активный образ жизни помогают укрепить здоровье и поддерживать тело в хорошем состоянии.",
+            "Здоровый образ жизни это не только питание и спорт, но и правильный режим сна и управления стрессом.",
+            "Развитие науки и техники способствует постоянному прогрессу в медицине и других отраслях."
+        ],
+        "long": [
+            "Процесс обучения должен быть организован таким образом, чтобы ученик мог понять, усвоить и воспроизвести материал, причем эффективность обучения напрямую зависит от последовательности, логики подачи материала и вовлеченности обучающегося.",
+            "Развитие искусственного интеллекта и машинного обучения приводит к революционным изменениям в нашей повседневной жизни, улучшая производительность в различных областях и предоставляя новые возможности для бизнеса.",
+            "Постоянное повышение уровня образования населения помогает обществу достигать более высоких стандартов жизни, что в свою очередь влияет на экономику и развитие наций.",
+            "Лидерство в условиях неопределенности требует способности адаптироваться, находить решения в меняющихся обстоятельствах и вести команду к успеху."
+        ]
+    }
+    </pre>
+
+    <script>
+        // Чтение JSON из HTML и использование данных
+        const jsonData = JSON.parse(document.getElementById('jsonData').innerText);
+        
+        let currentText = "";
+        let startTime;
+        let testCompleted = false;
+        let wpmCounter = 0;
+        let accuracyCounter = 100;
+
+        function changeTextLength() {
+            let textSelect = document.getElementById("textSelect");
+            let selectedValue = textSelect.value;
+            const randomIndex = Math.floor(Math.random() * jsonData[selectedValue].length);
+            currentText = jsonData[selectedValue][randomIndex];
+            document.getElementById('testText').innerText = currentText;
+            document.getElementById('inputText').value = '';
+            testCompleted = false;
+            wpmCounter = 0;
+            accuracyCounter = 100;
+            document.getElementById('resultBox').style.display = "none";
+            document.getElementById('achievementsBox').style.display = "none";
+        }
+
+        function startTypingTest() {
+            const inputText = document.getElementById('inputText').value;
+            const testText = document.getElementById('testText').textContent;
+            
+            let displayText = '';
+            let inputIndex = inputText.length - 1;
+            
+            // Отображение правильных и неправильных символов
+            for (let i = 0; i < testText.length; i++) {
+                const typedLetter = inputText[i];
+
+                if (i < inputText.length && typedLetter === testText[i]) {
+                    displayText += `<span class="letter letter-correct">${testText[i]}</span>`;
+                } else if (i < inputText.length) {
+                    displayText += `<span class="letter letter-incorrect">${testText[i]}</span>`;
+                } else {
+                    displayText += `<span class="letter">${testText[i]}</span>`;
+                }
+            }
+
+            document.getElementById('testText').innerHTML = displayText;
+
+            // Завершение теста по достижению цифры
+            if (/\d/.test(inputText[inputText.length - 1])) { // Любая цифра
+                if (!testCompleted) {
+                    testCompleted = true;
+                    const endTime = new Date().getTime();
+                    const timeTaken = (endTime - startTime) / 1000;
+                    wpmCounter = (inputText.length / 5) / (timeTaken / 60);
+                    accuracyCounter = calculateAccuracy(testText, inputText);
+
+                    document.getElementById('wpm').innerText = `Скорость: ${wpmCounter.toFixed(2)} слов в минуту`;
+                    document.getElementById('accuracy').innerText = `Точность: ${accuracyCounter.toFixed(2)}%`;
+                    document.getElementById('resultBox').style.display = "block";
+                    showAchievements();
+                    // Скрытие клавиатуры
+                    document.activeElement.blur();
+                }
+            }
+        }
+
+        function calculateAccuracy(testText, inputText) {
+            let correct = 0;
+            for (let i = 0; i < inputText.length; i++) {
+                if (inputText[i] === testText[i]) {
+                    correct++;
+                }
+            }
+            return (correct / testText.length) * 100;
+        }
+
+        function showAchievements() {
+            const speedAch = document.getElementById('speedAchievement');
+            const accuracyAch = document.getElementById('accuracyAchievement');
+
+            if (wpmCounter >= 30) {
+                speedAch.innerHTML = 'Достижение: 30 слов в минуту!';
+            } else if (wpmCounter >= 50) {
+                speedAch.innerHTML = 'Достижение: 50 слов в минуту!';
+            } else if (wpmCounter >= 100) {
+                speedAch.innerHTML = 'Достижение: 100 слов в минуту!';
+            } else {
+                speedAch.innerHTML = '';
+            }
+
+            if (accuracyCounter >= 90) {
+                accuracyAch.innerHTML = 'Достижение: 90% точности!';
+            } else {
+                accuracyAch.innerHTML = '';
+            }
+
+            document.getElementById('achievementsBox').style.display = "block";
+        }
+
+        // Завершение теста по нажатию на стрелку "Отправить" (для мобильных устройств)
+        function finishTest(event) {
+            event.preventDefault();
+            if (!testCompleted) {
+                startTypingTest();
+            }
+        }
+
+        // Инициализация текста при загрузке
+        window.onload = () => {
+            changeTextLength();
+        };
+
+        // Запуск теста
+        document.getElementById('inputText').addEventListener('focus', () => {
+            if (!startTime) {
+                startTime = new Date().getTime();
+            }
+        });
+    </script>
+</body>
+</html>
