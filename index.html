@@ -87,18 +87,17 @@
         <div class="text-options">
             <label for="textSelect">Выбери длину текста: </label>
             <select id="textSelect" onchange="changeTextLength()">
-                <option value="short">Короткий (±100 символов)</option>
-                <option value="medium">Средний (±200 символов)</option>
-                <option value="long">Длинный (±350 символов)</option>
+                <option value="short">Короткий (100 символов)</option>
+                <option value="medium">Средний (200 символов)</option>
+                <option value="long">Длинный (350 символов)</option>
             </select>
         </div>
 
         <div>
-            <p>Прочитай текст ниже и начни печатать в поле. Помни про знаки препинания! <br><br>
-            ВНИМАНИЕ ЕСЛИ ПРИНУДИТЕЛЬНО НУЖНО ЗАКОНЧИТЬ ТО НАЖМИ ЦИФРУ ОТ 0-9</p>
+            <p>Прочитай текст ниже и начни печатать в поле. Для того чтобы закончить напиши точку;)</p>
             <div id="testText" class="testText"></div>
             <form id="typingForm" onsubmit="finishTest(event)">
-                <input type="text" id="inputText" class="inputField" placeholder="Начни печатать здесь..." oninput="startTypingTest()">
+                <input type="text" id="inputText" class="inputField" placeholder="Начните печатать здесь..." oninput="startTypingTest()">
                 <button type="submit" style="display:none;"></button>
             </form>
         </div>
@@ -157,7 +156,11 @@
             let selectedValue = textSelect.value;
             const randomIndex = Math.floor(Math.random() * jsonData[selectedValue].length);
             currentText = jsonData[selectedValue][randomIndex];
-            document.getElementById('testText').innerText = currentText;
+
+            // Заменяем \n на <br> для отображения переносов строки
+            currentText = currentText.replace(/\n/g, '<br>');
+            
+            document.getElementById('testText').innerHTML = currentText;
             document.getElementById('inputText').value = '';
             testCompleted = false;
             wpmCounter = 0;
@@ -188,17 +191,32 @@
 
             document.getElementById('testText').innerHTML = displayText;
 
-            // Завершение теста по достижению цифры
-            if (/\d/.test(inputText[inputText.length - 1])) { // Любая цифра
+            // Начинаем отсчет времени при первом вводе
+            if (inputText.length === 1 && !startTime) {
+                startTime = new Date().getTime();
+            }
+
+            // Завершаем тест, когда весь текст введен
+            if (inputText === testText) {
                 if (!testCompleted) {
                     testCompleted = true;
                     const endTime = new Date().getTime();
-                    const timeTaken = (endTime - startTime) / 1000;
-                    wpmCounter = (inputText.length / 5) / (timeTaken / 60);
-                    accuracyCounter = calculateAccuracy(testText, inputText);
+                    const timeTaken = (endTime - startTime) / 1000; // Время в секундах
+                    
+                    // Важный момент: считаем количество символов, делим на 5 (стандарт 1 слово = 5 символов)
+                    const wordCount = testText.length / 5;
+                    wpmCounter = (wordCount / (timeTaken / 60)).toFixed(2);  // Расчет слов в минуту
 
-                    document.getElementById('wpm').innerText = `Скорость: ${wpmCounter.toFixed(2)} слов в минуту`;
-                    document.getElementById('accuracy').innerText = `Точность: ${accuracyCounter.toFixed(2)}%`;
+                    // Убедитесь, что WPM верное, когда делим на 60
+                    if (timeTaken > 0 && wordCount > 0) {
+                        accuracyCounter = calculateAccuracy(testText, inputText); // Расчет точности
+                        document.getElementById('wpm').innerText = `Скорость: ${wpmCounter} слов в минуту`;
+                        document.getElementById('accuracy').innerText = `Точность: ${accuracyCounter}%`;
+                    } else {
+                        document.getElementById('wpm').innerText = "Ошибка: неверно рассчитано время";
+                        document.getElementById('accuracy').innerText = "Ошибка: неверно рассчитано время";
+                    }
+                    
                     document.getElementById('resultBox').style.display = "block";
                     showAchievements();
                     // Скрытие клавиатуры
@@ -225,40 +243,15 @@
                 speedAch.innerHTML = 'Достижение: 30 слов в минуту!';
             } else if (wpmCounter >= 50) {
                 speedAch.innerHTML = 'Достижение: 50 слов в минуту!';
-            } else if (wpmCounter >= 100) {
-                speedAch.innerHTML = 'Достижение: 100 слов в минуту!';
-            } else {
-                speedAch.innerHTML = '';
             }
 
             if (accuracyCounter >= 90) {
-                accuracyAch.innerHTML = 'Достижение: 90% точности!';
-            } else {
-                accuracyAch.innerHTML = '';
-            }
-
-            document.getElementById('achievementsBox').style.display = "block";
-        }
-
-        // Завершение теста по нажатию на стрелку "Отправить" (для мобильных устройств)
-        function finishTest(event) {
-            event.preventDefault();
-            if (!testCompleted) {
-                startTypingTest();
+                accuracyAch.innerHTML = 'Достижение: Точность 90%!';
             }
         }
 
-        // Инициализация текста при загрузке
-        window.onload = () => {
-            changeTextLength();
-        };
-
-        // Запуск теста
-        document.getElementById('inputText').addEventListener('focus', () => {
-            if (!startTime) {
-                startTime = new Date().getTime();
-            }
-        });
+        // Инициализация начального текста
+        window.onload = changeTextLength;
     </script>
 </body>
 </html>
